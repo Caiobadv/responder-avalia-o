@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RespondeAI - Demo Interativo</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #1a1a2e;
+            --accent: #e94560;
+            --accent-light: #ff6b81;
+            --bg: #0f0f23;
+            --card: #16213e;
+            --text: #eaeaea;
+            --text-muted: #a0a0b0;
+            --gold: #f5c518;
+            --success: #44cc44;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+        header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+            padding-top: 1rem;
+        }
+
+        .logo {
+            font-size: 1.8rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--accent), var(--accent-light));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        header p { color: var(--text-muted); font-size: 1rem; }
+
+        /* Business Input */
+        .business-section {
+            background: var(--card);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .business-section h2 {
+            font-size: 1.2rem;
+            margin-bottom: 0.3rem;
+        }
+
+        .business-section p { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.2rem; }
+
+        .input-group { display: flex; flex-direction: column; gap: 1rem; }
+
+        .input-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        @media (max-width: 600px) { .input-row { grid-template-columns: 1fr; } }
+
+        label { font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.3rem; }
+
+        input, textarea, select {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(0,0,0,0.3);
+            color: var(--text);
+            font-size: 0.95rem;
+            font-family: inherit;
+            transition: border-color 0.3s;
+        }
+
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        textarea { resize: vertical; min-height: 80px; }
+
+        /* Reviews Input */
+        .reviews-section {
+            background: var(--card);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .review-input-card {
+            background: rgba(0,0,0,0.2);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            border: 1px solid rgba(255,255,255,0.05);
+            position: relative;
+        }
+
+        .review-input-card .remove-btn {
+            position: absolute;
+            top: 0.8rem;
+            right: 0.8rem;
+            background: rgba(255,60,60,0.15);
+            border: none;
+            color: #ff6666;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .star-selector {
+            display: flex;
+            gap: 0.3rem;
+            margin-bottom: 0.8rem;
+        }
+
+        .star-selector button {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #555;
+            transition: color 0.2s;
+        }
+
+        .star-selector button.active { color: var(--gold); }
+
+        .add-review-btn {
+            width: 100%;
+            padding: 0.8rem;
+            border-radius: 10px;
+            border: 2px dashed rgba(255,255,255,0.15);
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .add-review-btn:hover { border-color: var(--accent); color: var(--accent-light); }
+
+        /* Generate Button */
+        .generate-btn {
+            width: 100%;
+            padding: 1rem;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 2rem;
+        }
+
+        .generate-btn:hover { background: var(--accent-light); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(233, 69, 96, 0.3); }
+        .generate-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .generate-btn.loading { position: relative; }
+
+        /* Results */
+        .results-section {
+            display: none;
+        }
+
+        .results-section.visible { display: block; }
+
+        .result-card {
+            background: var(--card);
+            border-radius: 16px;
+            padding: 1.8rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid rgba(255,255,255,0.05);
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .result-stars { color: var(--gold); font-size: 1rem; }
+        .result-author { font-weight: 700; font-size: 1rem; }
+        .result-review { color: var(--text-muted); font-size: 0.95rem; margin-bottom: 1.2rem; padding-bottom: 1.2rem; border-bottom: 1px solid rgba(255,255,255,0.05); }
+
+        .result-response {
+            background: rgba(233, 69, 96, 0.06);
+            border-left: 3px solid var(--accent);
+            padding: 1.2rem;
+            border-radius: 0 12px 12px 0;
+        }
+
+        .result-response-label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--accent-light);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+        }
+
+        .result-response-text { font-size: 0.95rem; line-height: 1.6; }
+
+        .result-actions {
+            display: flex;
+            gap: 0.8rem;
+            margin-top: 1rem;
+        }
+
+        .result-action-btn {
+            padding: 0.4rem 1rem;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.15);
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .result-action-btn:hover { border-color: var(--accent); color: var(--accent-light); }
+        .result-action-btn.copied { background: rgba(68,204,68,0.15); border-color: var(--success); color: var(--success); }
+
+        /* Tone Badges */
+        .tone-badge {
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            border-radius: 50px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        .tone-positive { background: rgba(68,204,68,0.15); color: #66ee66; }
+        .tone-neutral { background: rgba(245,197,24,0.15); color: #f5d558; }
+        .tone-negative { background: rgba(255,68,68,0.15); color: #ff7777; }
+
+        /* Loading animation */
+        .loading-dots {
+            display: inline-flex;
+            gap: 4px;
+        }
+
+        .loading-dots span {
+            width: 8px;
+            height: 8px;
+            background: white;
+            border-radius: 50%;
+            animation: bounce 1.4s infinite ease-in-out;
+        }
+
+        .loading-dots span:nth-child(1) { animation-delay: 0s; }
+        .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+
+        /* Share section */
+        .share-section {
+            text-align: center;
+            padding: 2rem;
+            background: var(--card);
+            border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.05);
+            display: none;
+        }
+
+        .share-section.visible { display: block; }
+        .share-section h3 { margin-bottom: 0.5rem; }
+        .share-section p { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem; }
+
+        .powered-by {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+
+        .powered-by a { color: var(--accent-light); text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">RespondeAI</div>
+            <p>Demo Interativo - Veja como a IA responde avaliações do seu negócio</p>
+        </header>
+
+        <div class="business-section">
+            <h2>Sobre o negócio</h2>
+            <p>Informe os dados para que a IA personalize as respostas</p>
+            <div class="input-group">
+                <div class="input-row">
+                    <div>
+                        <label>Nome do estabelecimento</label>
+                        <input type="text" id="businessName" placeholder="Ex: Pousada Sol Nascente">
+                    </div>
+                    <div>
+                        <label>Tipo de negócio</label>
+                        <select id="businessType">
+                            <option value="hotel">Hotel / Pousada</option>
+                            <option value="restaurante">Restaurante / Bar</option>
+                            <option value="clinica">Clínica / Consultório</option>
+                            <option value="salao">Salão / Barbearia</option>
+                            <option value="loja">Loja / Comércio</option>
+                            <option value="academia">Academia / Estúdio</option>
+                            <option value="outro">Outro</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label>Tom de voz desejado</label>
+                    <select id="voiceTone">
+                        <option value="profissional">Profissional e cordial</option>
+                        <option value="descontraido">Descontraído e amigável</option>
+                        <option value="formal">Formal e institucional</option>
+                        <option value="caloroso">Caloroso e acolhedor</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="reviews-section">
+            <h2 style="margin-bottom: 0.3rem;">Avaliações para responder</h2>
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.2rem;">Cole avaliações reais do Google do seu cliente. Quanto mais reais, melhor o demo.</p>
+
+            <div id="reviewsList">
+                <div class="review-input-card" data-index="0">
+                    <button class="remove-btn" onclick="removeReview(this)" title="Remover">&times;</button>
+                    <div>
+                        <label>Nome do avaliador</label>
+                        <input type="text" class="reviewer-name" placeholder="Ex: Maria C.">
+                    </div>
+                    <div style="margin-top: 0.8rem;">
+                        <label>Estrelas</label>
+                        <div class="star-selector">
+                            <button onclick="setStars(this, 1)">&#9733;</button>
+                            <button onclick="setStars(this, 2)">&#9733;</button>
+                            <button onclick="setStars(this, 3)">&#9733;</button>
+                            <button onclick="setStars(this, 4)">&#9733;</button>
+                            <button onclick="setStars(this, 5)">&#9733;</button>
+                        </div>
+                    </div>
+                    <div style="margin-top: 0.5rem;">
+                        <label>Texto da avaliação</label>
+                        <textarea class="review-text" placeholder="Cole o texto da avaliação aqui..."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <button class="add-review-btn" onclick="addReview()">+ Adicionar outra avaliação</button>
+        </div>
+
+        <button class="generate-btn" id="generateBtn" onclick="generateResponses()">
+            Gerar respostas com IA
+        </button>
+
+        <div class="results-section" id="resultsSection">
+            <h2 style="text-align: center; margin-bottom: 0.5rem;">Respostas geradas</h2>
+            <p style="text-align: center; color: var(--text-muted); font-size: 0.9rem; margin-bottom: 2rem;">Respostas personalizadas para <span id="resultBusinessName"></span></p>
+            <div id="resultsList"></div>
+        </div>
+
+        <div class="share-section" id="shareSection">
+            <h3>Gostou do resultado?</h3>
+            <p>Automatize todas as respostas das suas avaliações por R$197/mês</p>
+            <a href="https://wa.me/5581996360102?text=Vi o demo do RespondeAI e quero saber mais!" class="generate-btn" style="display: inline-block; text-decoration: none; width: auto; padding: 0.8rem 2rem;">Falar no WhatsApp</a>
+        </div>
+
+        <div class="powered-by">
+            Powered by <a href="#">RespondeAI</a> - Respostas inteligentes para negócios inteligentes
+        </div>
+    </div>
+
+    <script>
+        let reviewCount = 1;
+
+        function setStars(btn, rating) {
+            const selector = btn.parentElement;
+            const buttons = selector.querySelectorAll('button');
+            buttons.forEach((b, i) => {
+                b.classList.toggle('active', i < rating);
+            });
+            selector.dataset.rating = rating;
+        }
+
+        function addReview() {
+            reviewCount++;
+            const card = document.createElement('div');
+            card.className = 'review-input-card';
+            card.dataset.index = reviewCount;
+            card.innerHTML = `
+                <button class="remove-btn" onclick="removeReview(this)" title="Remover">&times;</button>
+                <div>
+                    <label>Nome do avaliador</label>
+                    <input type="text" class="reviewer-name" placeholder="Ex: João P.">
+                </div>
+                <div style="margin-top: 0.8rem;">
+                    <label>Estrelas</label>
+                    <div class="star-selector">
+                        <button onclick="setStars(this, 1)">&#9733;</button>
+                        <button onclick="setStars(this, 2)">&#9733;</button>
+                        <button onclick="setStars(this, 3)">&#9733;</button>
+                        <button onclick="setStars(this, 4)">&#9733;</button>
+                        <button onclick="setStars(this, 5)">&#9733;</button>
+                    </div>
+                </div>
+                <div style="margin-top: 0.5rem;">
+                    <label>Texto da avaliação</label>
+                    <textarea class="review-text" placeholder="Cole o texto da avaliação aqui..."></textarea>
+                </div>
+            `;
+            document.getElementById('reviewsList').appendChild(card);
+        }
+
+        function removeReview(btn) {
+            const cards = document.querySelectorAll('.review-input-card');
+            if (cards.length > 1) {
+                btn.parentElement.remove();
+            }
+        }
+
+        function getSentiment(stars) {
+            if (stars >= 4) return { class: 'tone-positive', label: 'Positiva' };
+            if (stars >= 3) return { class: 'tone-neutral', label: 'Neutra' };
+            return { class: 'tone-negative', label: 'Negativa' };
+        }
+
+        function generateResponse(businessName, businessType, tone, reviewerName, stars, reviewText) {
+            const typeLabels = {
+                hotel: 'hotel/pousada', restaurante: 'restaurante', clinica: 'clínica',
+                salao: 'salão', loja: 'loja', academia: 'academia', outro: 'estabelecimento'
+            };
+            const toneLabels = {
+                profissional: 'profissional e cordial',
+                descontraido: 'descontraído e amigável',
+                formal: 'formal e institucional',
+                caloroso: 'caloroso e acolhedor'
+            };
+
+            const bt = typeLabels[businessType] || 'estabelecimento';
+            const tn = toneLabels[tone] || 'profissional';
+            const firstName = reviewerName.split(' ')[0] || 'cliente';
+
+            // AI-quality response generation (template-based for demo, real product uses API)
+            if (stars >= 4) {
+                const positiveTemplates = [
+                    `${firstName}, muito obrigado pelo carinho nas palavras! Ficamos muito felizes que sua experiência no ${businessName} tenha sido especial. Nossa equipe trabalha todos os dias para oferecer o melhor, e feedback como o seu nos motiva a continuar. Será um prazer recebê-lo(a) novamente!`,
+                    `Que alegria ler isso, ${firstName}! Saber que você aproveitou sua passagem pelo ${businessName} é o que nos move. Cada detalhe é pensado para proporcionar a melhor experiência. Obrigado pela confiança e esperamos vê-lo(a) em breve!`,
+                    `${firstName}, seu feedback é muito valioso para nós! A equipe do ${businessName} fica radiante com avaliações assim. Trabalhamos com dedicação para que cada visita seja memorável. Conte sempre conosco e volte quando quiser!`
+                ];
+                return positiveTemplates[Math.floor(Math.random() * positiveTemplates.length)];
+            } else if (stars === 3) {
+                const neutralTemplates = [
+                    `${firstName}, agradecemos seu feedback! No ${businessName}, buscamos a excelência e sua avaliação nos ajuda a melhorar. Gostaríamos de entender melhor como podemos tornar sua próxima experiência ainda mais especial. Ficamos à disposição pelo nosso WhatsApp para ouvir suas sugestões!`,
+                    `Obrigado pela avaliação, ${firstName}. Sabemos que sempre há espaço para melhorar, e levamos cada comentário a sério no ${businessName}. Estamos trabalhando continuamente para aprimorar nossos serviços. Esperamos surpreendê-lo(a) positivamente na próxima visita!`
+                ];
+                return neutralTemplates[Math.floor(Math.random() * neutralTemplates.length)];
+            } else {
+                const negativeResponses = [];
+                const reviewLower = reviewText.toLowerCase();
+
+                if (reviewLower.includes('demor') || reviewLower.includes('esper') || reviewLower.includes('lent')) {
+                    negativeResponses.push(`${firstName}, lamentamos profundamente pela demora em seu atendimento. Isso não reflete o padrão do ${businessName}. Já identificamos o ponto de melhoria e reforçamos nossa equipe para garantir agilidade. Gostaríamos de ter a oportunidade de mostrar que essa experiência foi uma exceção. Entre em contato conosco para uma cortesia na sua próxima visita.`);
+                }
+                if (reviewLower.includes('suj') || reviewLower.includes('limp')) {
+                    negativeResponses.push(`${firstName}, pedimos sinceras desculpas. A limpeza é prioridade absoluta no ${businessName} e claramente falhamos nesse aspecto durante sua visita. Tomamos medidas imediatas, incluindo reforço na equipe e revisão dos nossos protocolos. Gostaríamos de reconquistá-lo(a) — entre em contato para agendarmos uma visita especial.`);
+                }
+                if (reviewLower.includes('preço') || reviewLower.includes('caro') || reviewLower.includes('valor')) {
+                    negativeResponses.push(`${firstName}, agradecemos o feedback sobre valores. No ${businessName}, buscamos oferecer a melhor relação custo-benefício. Entendemos sua percepção e estamos sempre avaliando formas de agregar mais valor. Fique de olho em nossas promoções especiais e não hesite em nos contactar para condições personalizadas.`);
+                }
+                if (reviewLower.includes('atend') || reviewLower.includes('funcionár') || reviewLower.includes('grosso') || reviewLower.includes('rude')) {
+                    negativeResponses.push(`${firstName}, levamos seu relato muito a sério. O atendimento no ${businessName} deve ser sempre acolhedor e respeitoso. Já conversamos com toda a equipe e reforçamos nossos valores de hospitalidade. Pedimos desculpas e gostaríamos de ter a chance de proporcionar uma experiência à altura do que você merece.`);
+                }
+
+                if (negativeResponses.length === 0) {
+                    negativeResponses.push(`${firstName}, agradecemos por compartilhar sua experiência. Lamentamos que não tenhamos atendido suas expectativas no ${businessName}. Cada feedback é levado a sério e já estamos trabalhando nas melhorias necessárias. Gostaríamos de ter a oportunidade de reconquistá-lo(a). Entre em contato conosco pelo WhatsApp para que possamos resolver isso pessoalmente.`);
+                }
+
+                return negativeResponses[Math.floor(Math.random() * negativeResponses.length)];
+            }
+        }
+
+        async function generateResponses() {
+            const businessName = document.getElementById('businessName').value || 'Seu Negócio';
+            const businessType = document.getElementById('businessType').value;
+            const voiceTone = document.getElementById('voiceTone').value;
+
+            const cards = document.querySelectorAll('.review-input-card');
+            const reviews = [];
+
+            cards.forEach(card => {
+                const name = card.querySelector('.reviewer-name').value || 'Cliente';
+                const starSelector = card.querySelector('.star-selector');
+                const stars = parseInt(starSelector.dataset.rating) || 5;
+                const text = card.querySelector('.review-text').value || '';
+                if (text.trim()) {
+                    reviews.push({ name, stars, text });
+                }
+            });
+
+            if (reviews.length === 0) {
+                alert('Adicione pelo menos uma avaliação com texto para gerar respostas.');
+                return;
+            }
+
+            const btn = document.getElementById('generateBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading-dots"><span></span><span></span><span></span></span> Gerando respostas...';
+
+            // Simulate AI processing time for effect
+            await new Promise(r => setTimeout(r, 1500));
+
+            const resultsList = document.getElementById('resultsList');
+            resultsList.innerHTML = '';
+
+            document.getElementById('resultBusinessName').textContent = businessName;
+
+            for (let i = 0; i < reviews.length; i++) {
+                const review = reviews[i];
+                const sentiment = getSentiment(review.stars);
+                const response = generateResponse(businessName, businessType, voiceTone, review.name, review.stars, review.text);
+
+                // Stagger animation
+                await new Promise(r => setTimeout(r, 400));
+
+                const stars = '★'.repeat(review.stars) + '☆'.repeat(5 - review.stars);
+
+                const resultCard = document.createElement('div');
+                resultCard.className = 'result-card';
+                resultCard.innerHTML = `
+                    <div class="result-header">
+                        <div>
+                            <span class="result-author">${review.name}</span>
+                            <span class="tone-badge ${sentiment.class}">${sentiment.label}</span>
+                        </div>
+                        <span class="result-stars">${stars}</span>
+                    </div>
+                    <div class="result-review">${review.text}</div>
+                    <div class="result-response">
+                        <div class="result-response-label">Resposta gerada por IA para ${businessName}</div>
+                        <div class="result-response-text">${response}</div>
+                    </div>
+                    <div class="result-actions">
+                        <button class="result-action-btn" onclick="copyResponse(this, '${response.replace(/'/g, "\\'")}')">Copiar resposta</button>
+                        <button class="result-action-btn" onclick="regenerate(this)">Gerar outra versão</button>
+                    </div>
+                `;
+                resultsList.appendChild(resultCard);
+            }
+
+            document.getElementById('resultsSection').classList.add('visible');
+            document.getElementById('shareSection').classList.add('visible');
+
+            btn.disabled = false;
+            btn.innerHTML = 'Gerar respostas com IA';
+
+            document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function copyResponse(btn, text) {
+            navigator.clipboard.writeText(text).then(() => {
+                btn.classList.add('copied');
+                btn.textContent = 'Copiado!';
+                setTimeout(() => {
+                    btn.classList.remove('copied');
+                    btn.textContent = 'Copiar resposta';
+                }, 2000);
+            });
+        }
+
+        function regenerate(btn) {
+            const card = btn.closest('.result-card');
+            const reviewText = card.querySelector('.result-review').textContent;
+            const authorText = card.querySelector('.result-author').textContent;
+            const starsEl = card.querySelector('.result-stars').textContent;
+            const stars = (starsEl.match(/★/g) || []).length;
+
+            const businessName = document.getElementById('businessName').value || 'Seu Negócio';
+            const businessType = document.getElementById('businessType').value;
+            const voiceTone = document.getElementById('voiceTone').value;
+
+            const newResponse = generateResponse(businessName, businessType, voiceTone, authorText, stars, reviewText);
+            card.querySelector('.result-response-text').textContent = newResponse;
+
+            // Flash effect
+            card.querySelector('.result-response').style.background = 'rgba(233, 69, 96, 0.15)';
+            setTimeout(() => {
+                card.querySelector('.result-response').style.background = 'rgba(233, 69, 96, 0.06)';
+            }, 500);
+        }
+    </script>
+</body>
+</html>

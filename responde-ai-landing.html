@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RespondeAI - Respostas inteligentes para suas avaliações do Google</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --primary: #1a1a2e;
+            --accent: #e94560;
+            --accent-light: #ff6b81;
+            --bg: #0f0f23;
+            --card: #16213e;
+            --text: #eaeaea;
+            --text-muted: #a0a0b0;
+            --gold: #f5c518;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Nav */
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.2rem 5%;
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 100;
+            background: rgba(15, 15, 35, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(233, 69, 96, 0.1);
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--accent), var(--accent-light));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav-cta {
+            background: var(--accent);
+            color: white;
+            padding: 0.6rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+        }
+
+        .nav-cta:hover { background: var(--accent-light); transform: translateY(-1px); }
+
+        /* Hero */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 6rem 5% 4rem;
+            position: relative;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: radial-gradient(circle at 50% 30%, rgba(233, 69, 96, 0.08) 0%, transparent 60%);
+        }
+
+        .badge {
+            display: inline-block;
+            background: rgba(233, 69, 96, 0.15);
+            color: var(--accent-light);
+            padding: 0.4rem 1rem;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            border: 1px solid rgba(233, 69, 96, 0.3);
+        }
+
+        .hero h1 {
+            font-size: clamp(2.2rem, 5vw, 3.8rem);
+            font-weight: 800;
+            line-height: 1.15;
+            margin-bottom: 1.5rem;
+            max-width: 800px;
+        }
+
+        .hero h1 span {
+            background: linear-gradient(135deg, var(--accent), var(--accent-light));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero p {
+            font-size: 1.15rem;
+            color: var(--text-muted);
+            max-width: 580px;
+            margin-bottom: 2.5rem;
+        }
+
+        .cta-group { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+            padding: 0.9rem 2rem;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 1.05rem;
+            transition: all 0.3s;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-primary:hover { background: var(--accent-light); transform: translateY(-2px); box-shadow: 0 8px 25px rgba(233, 69, 96, 0.3); }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--text);
+            padding: 0.9rem 2rem;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1.05rem;
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.3s;
+        }
+
+        .btn-secondary:hover { border-color: var(--accent); color: var(--accent-light); }
+
+        /* Stats */
+        .stats {
+            display: flex;
+            gap: 3rem;
+            margin-top: 3rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .stat { text-align: center; }
+        .stat-number { font-size: 2rem; font-weight: 800; color: var(--accent-light); }
+        .stat-label { font-size: 0.85rem; color: var(--text-muted); }
+
+        /* Problem Section */
+        .section {
+            padding: 5rem 5%;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            font-size: clamp(1.6rem, 3vw, 2.4rem);
+            font-weight: 800;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+
+        .section-subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 1.05rem;
+            max-width: 600px;
+            margin: 0 auto 3rem;
+        }
+
+        /* Before/After */
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        @media (max-width: 768px) { .comparison { grid-template-columns: 1fr; } }
+
+        .comparison-card {
+            background: var(--card);
+            border-radius: 16px;
+            padding: 2rem;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .comparison-card.before { border-top: 3px solid #ff4444; }
+        .comparison-card.after { border-top: 3px solid #44cc44; }
+
+        .comparison-label {
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 1rem;
+        }
+
+        .before .comparison-label { color: #ff4444; }
+        .after .comparison-label { color: #44cc44; }
+
+        .review-mock {
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            padding: 1.2rem;
+            margin-bottom: 1rem;
+        }
+
+        .review-stars { color: var(--gold); margin-bottom: 0.5rem; font-size: 0.9rem; }
+        .review-author { font-weight: 600; font-size: 0.9rem; margin-bottom: 0.3rem; }
+        .review-text { font-size: 0.9rem; color: var(--text-muted); }
+        .review-response { background: rgba(233, 69, 96, 0.08); border-left: 3px solid var(--accent); padding: 1rem; border-radius: 0 8px 8px 0; margin-top: 0.8rem; }
+        .review-response-label { font-size: 0.75rem; font-weight: 700; color: var(--accent-light); margin-bottom: 0.3rem; }
+        .review-response-text { font-size: 0.88rem; color: var(--text); line-height: 1.5; }
+        .no-response { color: #ff6666; font-style: italic; font-size: 0.85rem; margin-top: 0.8rem; }
+
+        /* Features */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .feature-card {
+            background: var(--card);
+            border-radius: 14px;
+            padding: 1.8rem;
+            border: 1px solid rgba(255,255,255,0.05);
+            transition: all 0.3s;
+        }
+
+        .feature-card:hover { border-color: rgba(233, 69, 96, 0.3); transform: translateY(-3px); }
+
+        .feature-icon {
+            width: 48px;
+            height: 48px;
+            background: rgba(233, 69, 96, 0.15);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .feature-card h3 { font-size: 1.1rem; margin-bottom: 0.5rem; }
+        .feature-card p { font-size: 0.9rem; color: var(--text-muted); }
+
+        /* Pricing */
+        .pricing-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .pricing-card {
+            background: var(--card);
+            border-radius: 16px;
+            padding: 2.5rem 2rem;
+            border: 1px solid rgba(255,255,255,0.05);
+            text-align: center;
+            position: relative;
+        }
+
+        .pricing-card.featured {
+            border: 2px solid var(--accent);
+            transform: scale(1.03);
+        }
+
+        .pricing-badge {
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--accent);
+            color: white;
+            padding: 0.3rem 1rem;
+            border-radius: 50px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .pricing-name { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.5rem; }
+        .pricing-price { font-size: 2.5rem; font-weight: 800; margin-bottom: 0.3rem; }
+        .pricing-price span { font-size: 1rem; font-weight: 400; color: var(--text-muted); }
+        .pricing-desc { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem; }
+
+        .pricing-features {
+            list-style: none;
+            text-align: left;
+            margin-bottom: 2rem;
+        }
+
+        .pricing-features li {
+            padding: 0.5rem 0;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .pricing-features li::before { content: '\2713'; color: var(--accent-light); font-weight: 700; }
+
+        .pricing-cta {
+            display: block;
+            width: 100%;
+            padding: 0.8rem;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 0.95rem;
+            transition: all 0.3s;
+        }
+
+        .pricing-card .pricing-cta { background: rgba(233, 69, 96, 0.15); color: var(--accent-light); border: 1px solid rgba(233, 69, 96, 0.3); }
+        .pricing-card.featured .pricing-cta { background: var(--accent); color: white; border: none; }
+        .pricing-cta:hover { transform: translateY(-1px); }
+
+        /* Social Proof */
+        .social-proof {
+            text-align: center;
+            padding: 3rem 5%;
+            background: rgba(233, 69, 96, 0.03);
+            border-top: 1px solid rgba(233, 69, 96, 0.1);
+            border-bottom: 1px solid rgba(233, 69, 96, 0.1);
+        }
+
+        .social-proof p { color: var(--text-muted); font-size: 1rem; max-width: 500px; margin: 0 auto; }
+
+        /* CTA Final */
+        .final-cta {
+            text-align: center;
+            padding: 5rem 5%;
+        }
+
+        .final-cta h2 {
+            font-size: clamp(1.8rem, 4vw, 2.8rem);
+            font-weight: 800;
+            margin-bottom: 1rem;
+        }
+
+        .final-cta p { color: var(--text-muted); font-size: 1.1rem; margin-bottom: 2rem; }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 2rem 5%;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            border-top: 1px solid rgba(255,255,255,0.05);
+        }
+
+        /* WhatsApp Float */
+        .whatsapp-float {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            width: 60px;
+            height: 60px;
+            background: #25d366;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(37, 211, 102, 0.4);
+            z-index: 999;
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+
+        .whatsapp-float:hover { transform: scale(1.1); }
+        .whatsapp-float svg { width: 32px; height: 32px; fill: white; }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="logo">RespondeAI</div>
+        <a href="#pricing" class="nav-cta">Comece agora</a>
+    </nav>
+
+    <section class="hero">
+        <span class="badge">Piloto com 5 vagas disponíveis</span>
+        <h1>Suas avaliações do Google <span>respondidas com IA</span> em segundos</h1>
+        <p>Cada avaliação sem resposta é um cliente em dúvida. O RespondeAI gera respostas profissionais e personalizadas automaticamente, 24h por dia.</p>
+        <div class="cta-group">
+            <a href="#pricing" class="btn-primary">Quero testar grátis por 7 dias</a>
+            <a href="#demo" class="btn-secondary">Ver demonstração</a>
+        </div>
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-number">89%</div>
+                <div class="stat-label">dos consumidores leem respostas<br>às avaliações</div>
+            </div>
+            <div class="stat">
+                <div class="stat-number">4.3x</div>
+                <div class="stat-label">mais confiança em negócios<br>que respondem reviews</div>
+            </div>
+            <div class="stat">
+                <div class="stat-number">&lt;30s</div>
+                <div class="stat-label">para gerar uma<br>resposta profissional</div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="demo">
+        <h2 class="section-title">Veja a diferença com seus próprios olhos</h2>
+        <p class="section-subtitle">Compare como suas avaliações ficam sem resposta versus com o RespondeAI</p>
+
+        <div class="comparison">
+            <div class="comparison-card before">
+                <div class="comparison-label">Sem RespondeAI</div>
+                <div class="review-mock">
+                    <div class="review-stars">&#9733;&#9733;&#9733;&#9734;&#9734;</div>
+                    <div class="review-author">Maria C.</div>
+                    <div class="review-text">O quarto era bom mas o check-in demorou muito. Fiquei esperando 40 minutos na recepção.</div>
+                    <div class="no-response">Sem resposta do estabelecimento</div>
+                </div>
+                <div class="review-mock">
+                    <div class="review-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+                    <div class="review-author">João P.</div>
+                    <div class="review-text">Excelente localização e café da manhã maravilhoso! Voltarei com certeza.</div>
+                    <div class="no-response">Sem resposta do estabelecimento</div>
+                </div>
+            </div>
+
+            <div class="comparison-card after">
+                <div class="comparison-label">Com RespondeAI</div>
+                <div class="review-mock">
+                    <div class="review-stars">&#9733;&#9733;&#9733;&#9734;&#9734;</div>
+                    <div class="review-author">Maria C.</div>
+                    <div class="review-text">O quarto era bom mas o check-in demorou muito. Fiquei esperando 40 minutos na recepção.</div>
+                    <div class="review-response">
+                        <div class="review-response-label">Resposta do proprietário</div>
+                        <div class="review-response-text">Maria, obrigado pelo feedback. Lamentamos a demora no check-in e já reforçamos nossa equipe nos horários de pico. Ficamos felizes que tenha gostado do quarto! Esperamos recebê-la novamente com uma experiência ainda melhor.</div>
+                    </div>
+                </div>
+                <div class="review-mock">
+                    <div class="review-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+                    <div class="review-author">João P.</div>
+                    <div class="review-text">Excelente localização e café da manhã maravilhoso! Voltarei com certeza.</div>
+                    <div class="review-response">
+                        <div class="review-response-label">Resposta do proprietário</div>
+                        <div class="review-response-text">João, que alegria saber que aproveitou a localização e o café da manhã! Nossa equipe de cozinha vai adorar esse feedback. Será um prazer recebê-lo de volta!</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section">
+        <h2 class="section-title">Como funciona</h2>
+        <p class="section-subtitle">Configuração em 5 minutos. Resultados imediatos.</p>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">1</div>
+                <h3>Conecte seu negócio</h3>
+                <p>Informe o nome do seu estabelecimento no Google e pronto. Puxamos suas avaliações automaticamente.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">2</div>
+                <h3>IA gera respostas</h3>
+                <p>Nossa inteligência artificial analisa cada avaliação e cria respostas personalizadas no tom da sua marca.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">3</div>
+                <h3>Você aprova e publica</h3>
+                <p>Revise as respostas no painel, edite se quiser, e publique com um clique. Controle total é seu.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="section">
+        <h2 class="section-title">Por que responder avaliações importa</h2>
+        <p class="section-subtitle">Dados que seu concorrente não quer que você saiba</p>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">&#9733;</div>
+                <h3>Melhora seu ranking no Google</h3>
+                <p>Negócios que respondem avaliações aparecem mais alto nas buscas locais. O Google prioriza estabelecimentos ativos.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">&#128176;</div>
+                <h3>Converte indecisos em clientes</h3>
+                <p>Quem lê avaliações também lê as respostas. Uma resposta profissional a uma crítica vale mais que 10 elogios.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">&#128337;</div>
+                <h3>Economiza horas por semana</h3>
+                <p>Em vez de gastar 30min+ escrevendo respostas, a IA faz em segundos. Você só aprova.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="pricing">
+        <h2 class="section-title">Planos simples, resultado real</h2>
+        <p class="section-subtitle">Teste grátis por 7 dias. Cancele quando quiser.</p>
+        <div class="pricing-cards">
+            <div class="pricing-card">
+                <div class="pricing-name">Essencial</div>
+                <div class="pricing-price">R$197<span>/mês</span></div>
+                <div class="pricing-desc">Para negócios com até 30 avaliações/mês</div>
+                <ul class="pricing-features">
+                    <li>Até 30 respostas por mês</li>
+                    <li>Painel de gerenciamento</li>
+                    <li>Tom de voz personalizado</li>
+                    <li>Suporte via WhatsApp</li>
+                </ul>
+                <a href="#contact" class="pricing-cta">Começar teste grátis</a>
+            </div>
+            <div class="pricing-card featured">
+                <div class="pricing-badge">Mais popular</div>
+                <div class="pricing-name">Profissional</div>
+                <div class="pricing-price">R$347<span>/mês</span></div>
+                <div class="pricing-desc">Para negócios com alto volume de avaliações</div>
+                <ul class="pricing-features">
+                    <li>Avaliações ilimitadas</li>
+                    <li>Alerta de avaliação negativa</li>
+                    <li>Relatório mensal de reputação</li>
+                    <li>Suporte prioritário</li>
+                    <li>Múltiplas unidades</li>
+                </ul>
+                <a href="#contact" class="pricing-cta">Começar teste grátis</a>
+            </div>
+        </div>
+    </section>
+
+    <section class="final-cta" id="contact">
+        <h2>Pronto para transformar suas avaliações?</h2>
+        <p>Vagas limitadas no programa piloto. Fale conosco agora.</p>
+        <a href="https://wa.me/5581996360102?text=Olá! Quero saber mais sobre o RespondeAI" class="btn-primary" style="display: inline-block;">Falar no WhatsApp</a>
+    </section>
+
+    <footer>
+        <p>RespondeAI &copy; 2026. Respostas inteligentes para negócios inteligentes.</p>
+    </footer>
+
+    <a href="https://wa.me/5581996360102?text=Olá! Vi o RespondeAI e quero testar" class="whatsapp-float" target="_blank">
+        <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+    </a>
+</body>
+</html>
