@@ -213,7 +213,85 @@ async function extractFromGoogleMaps(page, mapsUrl) {
   return result;
 }
 
+// ── ENRIQUECIMENTO DE UMA LINHA ──────────────────────────────────
+
+async function enrichRow(page, row, idx, total) {
+  const nome = row.Nome || 'sem nome';
+  log(`[${idx}/${total}] Enriquecendo: ${nome}...`);
+
+  let allEmails = [];
+  let allInstagrams = [];
+  let allWhatsapps = [];
+
+  // 1. Extrair do Google Maps
+  const mapsUrl = row['Google Maps'] || row['GoogleMaps'] || '';
+  if (mapsUrl) {
+    const mapsData = await extractFromGoogleMaps(page, mapsUrl);
+    allInstagrams.push(...mapsData.instagrams);
+
+    // Se achou websites no Maps, visita cada um (máximo 1 para agilizar)
+    const websitesToVisit = mapsData.websites.slice(0, 1);
+    for (const website of websitesToVisit) {
+      try {
+        const siteData = await extractFromWebsite(page, website);
+        allEmails.push(...siteData.emails);
+        allInstagrams.push(...siteData.instagrams);
+        allWhatsapps.push(...siteData.whatsapps);
+      } catch (err) {
+        log(`      Falha website ${website}: ${err.message.slice(0, 50)}`);
+      }
+      await sleep(800, 1500);
+    }
+
+    // Se tem telefone do Maps, usa como WhatsApp
+    if (mapsData.phones.length > 0 && allWhatsapps.length === 0) {
+      const phone = mapsData.phones[0].replace(/\D/g, '');
+      if (phone.length >= 10) {
+        allWhatsapps.push(phone.startsWith('55') ? phone : '55' + phone);
+      }
+    }
+  }
+
+  // 2. Se tem website na coluna original do CSV, visita também
+  const csvWebsite = row.Website || row.website || '';
+  if (csvWebsite && !csvWebsite.includes('google.com') && allEmails.length === 0) {
+    const url = csvWebsite.startsWith('http') ? csvWebsite : 'https://' + csvWebsite;
+    try {
+      const siteData = await extractFromWebsite(page, url);
+      allEmails.push(...siteData.emails);
+      allInstagrams.push(...siteData.instagrams);
+      allWhatsapps.push(...siteData.whatsapps);
+    } catch (err) {
+      log(`      Falha website CSV ${url}: ${err.message.slice(0, 50)}`);
+    }
+  }
+
+  // 3. Se tem telefone na coluna original e nenhum WhatsApp encontrado
+  const csvPhone = row.Telefone || row.telefone || '';
+  if (csvPhone && allWhatsapps.length === 0) {
+    const phone = csvPhone.replace(/\D/g, '');
+    if (phone.length >= 10) {
+      allWhatsapps.push(phone.startsWith('55') ? phone : '55' + phone);
+    }
+  }
+
+  // Deduplica e salva
+  row.Email = [...new Set(allEmails)].join('; ');
+  row.Instagram = [...new Set(allInstagrams)].join('; ');
+  row.WhatsApp = [...new Set(allWhatsapps)].join('; ');
+  row.Status_Envio = row.Status_Envio || '';
+  row.Enriquecido = 'sim'; // Marca como processado independentemente do resultado
+
+  const found = [];
+  if (row.Email) found.push(`email`);
+  if (row.Instagram) found.push(`ig`);
+  if (row.WhatsApp) found.push(`wpp`);
+  log(`   [${idx}] ${nome} -> ${found.length > 0 ? found.join('+') : 'nada'}`);
+}
+
 // ── MAIN ─────────────────────────────────────────────────────────
+
+const CONCURRENCY = parseInt(process.env.CONCURRENCY || '3', 10);
 
 async function main() {
   // Encontra o CSV mais recente
@@ -231,7 +309,17 @@ async function main() {
   const inputFile = path.join(OUTPUT_DIR, files[0]);
   log(`Lendo: ${files[0]}`);
 
-  const content = fs.readFileSync(inputFile, 'utf8');
+  // Se já existe um ENRIQUECIDO do mesmo dia, usa ele para retomar
+  const date = new Date().toISOString().split('T')[0];
+  const outputFile = path.join(OUTPUT_DIR, `prospects-ENRIQUECIDO-${date}.csv`);
+
+  let sourceFile = inputFile;
+  if (fs.existsSync(outputFile)) {
+    log(`Arquivo ENRIQUECIDO já existe, retomando: ${path.basename(outputFile)}`);
+    sourceFile = outputFile;
+  }
+
+  const content = fs.readFileSync(sourceFile, 'utf8');
   const { headers, rows } = parseCSV(content);
 
   if (rows.length === 0) {
@@ -239,17 +327,42 @@ async function main() {
     process.exit(1);
   }
 
-  log(`${rows.length} prospects para enriquecer`);
-
-  // Adiciona novas colunas
+  // Adiciona novas colunas (inclui Enriquecido como flag de processamento)
   const newHeaders = [...headers];
-  for (const col of ['Email', 'Instagram', 'WhatsApp', 'Status_Envio']) {
+  for (const col of ['Email', 'Instagram', 'WhatsApp', 'Enriquecido', 'Status_Envio']) {
     if (!newHeaders.includes(col)) newHeaders.push(col);
   }
 
+  // Filtra rows que ainda NÃO foram tentados (não têm flag Enriquecido='sim')
+  const pending = rows.filter(r => r.Enriquecido !== 'sim');
+  const alreadyDone = rows.length - pending.length;
+
+  log(`${rows.length} prospects total`);
+  log(`${alreadyDone} já processados (pulando)`);
+  log(`${pending.length} pendentes para processar`);
+  log(`Concorrência: ${CONCURRENCY} workers paralelos`);
+  log(`Para mudar: CONCURRENCY=2 node enrich.js\n`);
+
+  if (pending.length === 0) {
+    log('Nada a enriquecer. Saindo.');
+    return;
+  }
+
   const browser = await chromium.launch({
-    headless: false,
-    args: ['--lang=pt-BR', '--disable-blink-features=AutomationControlled'],
+    headless: true,
+    args: [
+      '--lang=pt-BR',
+      '--disable-blink-features=AutomationControlled',
+      '--disable-dev-shm-usage',
+      '--no-sandbox',
+    ],
+  });
+
+  // Detecta desconexão do browser
+  let browserClosed = false;
+  browser.on('disconnected', () => {
+    browserClosed = true;
+    log('!!! Browser desconectado — abortando workers');
   });
 
   const context = await browser.newContext({
@@ -258,109 +371,109 @@ async function main() {
     userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
   });
 
-  const page = await context.newPage();
-  let enriched = 0;
-
-  for (let i = 0; i < rows.length; i++) {
-    const row = rows[i];
-
-    // Pula se já foi enriquecido
-    if (row.Email || row.Instagram || row.WhatsApp) {
-      log(`[${i + 1}/${rows.length}] ${row.Nome} — já enriquecido, pulando`);
-      continue;
-    }
-
-    log(`[${i + 1}/${rows.length}] Enriquecendo: ${row.Nome}...`);
-
-    let allEmails = [];
-    let allInstagrams = [];
-    let allWhatsapps = [];
-
-    // 1. Extrair do Google Maps
-    const mapsUrl = row['Google Maps'] || row['GoogleMaps'] || '';
-    if (mapsUrl) {
-      const mapsData = await extractFromGoogleMaps(page, mapsUrl);
-      allInstagrams.push(...mapsData.instagrams);
-
-      // Se achou websites no Maps, visita cada um
-      for (const website of mapsData.websites) {
-        log(`   Visitando website: ${website}`);
-        const siteData = await extractFromWebsite(page, website);
-        allEmails.push(...siteData.emails);
-        allInstagrams.push(...siteData.instagrams);
-        allWhatsapps.push(...siteData.whatsapps);
-        await sleep(1500, 2500);
-      }
-
-      // Se tem telefone do Maps, usa como WhatsApp
-      if (mapsData.phones.length > 0 && allWhatsapps.length === 0) {
-        const phone = mapsData.phones[0].replace(/\D/g, '');
-        if (phone.length >= 10) {
-          allWhatsapps.push(phone.startsWith('55') ? phone : '55' + phone);
-        }
-      }
-    }
-
-    // 2. Se tem website na coluna original do CSV, visita também
-    const csvWebsite = row.Website || row.website || '';
-    if (csvWebsite && !csvWebsite.includes('google.com')) {
-      const url = csvWebsite.startsWith('http') ? csvWebsite : 'https://' + csvWebsite;
-      log(`   Visitando website (CSV): ${url}`);
-      const siteData = await extractFromWebsite(page, url);
-      allEmails.push(...siteData.emails);
-      allInstagrams.push(...siteData.instagrams);
-      allWhatsapps.push(...siteData.whatsapps);
-    }
-
-    // 3. Se tem telefone na coluna original e nenhum WhatsApp encontrado
-    const csvPhone = row.Telefone || row.telefone || '';
-    if (csvPhone && allWhatsapps.length === 0) {
-      const phone = csvPhone.replace(/\D/g, '');
-      if (phone.length >= 10) {
-        allWhatsapps.push(phone.startsWith('55') ? phone : '55' + phone);
-      }
-    }
-
-    // Deduplica e salva
-    row.Email = [...new Set(allEmails)].join('; ');
-    row.Instagram = [...new Set(allInstagrams)].join('; ');
-    row.WhatsApp = [...new Set(allWhatsapps)].join('; ');
-    row.Status_Envio = '';
-
-    enriched++;
-
-    const found = [];
-    if (row.Email) found.push(`email: ${row.Email}`);
-    if (row.Instagram) found.push(`ig: ${row.Instagram}`);
-    if (row.WhatsApp) found.push(`wpp: ${row.WhatsApp}`);
-    log(`   -> ${found.length > 0 ? found.join(' | ') : 'nenhum contato encontrado'}`);
-
-    // Salva incrementalmente
-    const date = new Date().toISOString().split('T')[0];
-    const outputFile = path.join(OUTPUT_DIR, `prospects-ENRIQUECIDO-${date}.csv`);
-    writeCSV(outputFile, newHeaders, rows);
-
-    await sleep(2000, 3500);
+  // Cria N páginas (uma por worker)
+  const pages = [];
+  for (let i = 0; i < CONCURRENCY; i++) {
+    pages.push(await context.newPage());
   }
 
-  await browser.close();
+  // Fila de trabalho compartilhada
+  const queue = [...pending];
+  const total = queue.length;
+  let completed = 0;
+  let savePending = false;
 
-  const date = new Date().toISOString().split('T')[0];
-  const outputFile = path.join(OUTPUT_DIR, `prospects-ENRIQUECIDO-${date}.csv`);
+  // Debounced save
+  let lastSaveTs = 0;
+  async function maybeSave(force = false) {
+    const now = Date.now();
+    if (savePending) return;
+    if (!force && now - lastSaveTs < 1500) return;
+    savePending = true;
+    try {
+      writeCSV(outputFile, newHeaders, rows);
+      lastSaveTs = Date.now();
+    } catch (err) {
+      log(`Erro ao salvar CSV: ${err.message}`);
+    }
+    savePending = false;
+  }
+
+  // Salva no Ctrl+C
+  process.on('SIGINT', async () => {
+    log('\n!!! Interrupção detectada — salvando CSV...');
+    await maybeSave(true);
+    process.exit(0);
+  });
+
+  // Worker function
+  async function worker(workerId, page) {
+    while (queue.length > 0) {
+      if (browserClosed) {
+        log(`Worker ${workerId} abortado (browser fechado)`);
+        return;
+      }
+
+      const row = queue.shift();
+      if (!row) break;
+
+      completed++;
+      const idx = completed;
+
+      try {
+        await enrichRow(page, row, idx, total);
+      } catch (err) {
+        const isBrowserError = err.message.includes('browser has been closed')
+          || err.message.includes('Target closed')
+          || err.message.includes('crashed');
+
+        if (isBrowserError) {
+          log(`   [${idx}] ERRO FATAL: browser morreu — abortando worker ${workerId}`);
+          browserClosed = true;
+          return;
+        }
+
+        log(`   [${idx}] ERRO: ${err.message.slice(0, 80)}`);
+        // Marca como tentado mesmo com erro para não ficar em loop infinito
+        row.Enriquecido = 'erro';
+      }
+
+      await maybeSave();
+    }
+    log(`Worker ${workerId} finalizado`);
+  }
+
+  // Inicia todos os workers em paralelo
+  await Promise.all(pages.map((page, i) => worker(i + 1, page)));
+
+  // Salva versão final
+  await maybeSave(true);
+
+  try { await browser.close(); } catch {}
 
   // Resumo
   const comEmail = rows.filter(r => r.Email).length;
   const comInsta = rows.filter(r => r.Instagram).length;
   const comWhats = rows.filter(r => r.WhatsApp).length;
+  const comAlgo = rows.filter(r => r.Email || r.Instagram || r.WhatsApp).length;
+  const processados = rows.filter(r => r.Enriquecido === 'sim').length;
+  const erros = rows.filter(r => r.Enriquecido === 'erro').length;
 
   log('\n══════════════════════════════════════════');
   log('  ENRIQUECIMENTO CONCLUIDO!');
-  log(`  Total processados: ${enriched}`);
+  log(`  Processados OK: ${processados}`);
+  log(`  Com erro: ${erros} (vai tentar de novo se rodar outra vez)`);
   log(`  Com email: ${comEmail}`);
   log(`  Com Instagram: ${comInsta}`);
   log(`  Com WhatsApp: ${comWhats}`);
+  log(`  Com algum canal: ${comAlgo}/${rows.length}`);
   log(`  Arquivo: ${outputFile}`);
   log('══════════════════════════════════════════');
+
+  if (browserClosed) {
+    log('\n!!! Browser morreu no meio. Rode de novo para retomar:');
+    log('    CONCURRENCY=2 node enrich.js');
+  }
 }
 
 main().catch(err => {
