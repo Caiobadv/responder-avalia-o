@@ -675,6 +675,8 @@
                                 <select id="msgTemplate" onchange="generateMessage()">
                                     <option value="first">Primeira abordagem</option>
                                     <option value="demo">Envio de demo</option>
+                                    <option value="bulk">Oferta pacote único</option>
+                                    <option value="report">Oferta relatório</option>
                                     <option value="followup">Follow-up (2 dias)</option>
                                     <option value="price">Resposta sobre preço</option>
                                     <option value="closing">Fechamento</option>
@@ -796,7 +798,7 @@
 
         function sendWhatsApp(phone, name, businessName) {
             const cleanPhone = phone.replace(/\D/g, '');
-            const msg = encodeURIComponent(`Oi ${name}! Vi que o ${businessName} tem ótimas avaliações no Google, mas notei que a maioria não tem resposta. Sabia que 89% das pessoas leem as respostas antes de decidir visitar?\n\nCriei uma demonstração gratuita de como as respostas do ${businessName} ficariam com inteligência artificial. Posso mandar?`);
+            const msg = encodeURIComponent(`Oi ${name}! Vi que o ${businessName} tem ótimas avaliações no Google, mas notei que a maioria não tem resposta. Sabia que 89% das pessoas leem as respostas antes de decidir visitar?\n\nTrabalho com IA aplicada à reputação online. Consigo responder TODAS as avaliações do ${businessName} de uma vez. Posso te mostrar como ficaria?`);
             window.open(`https://wa.me/55${cleanPhone}?text=${msg}`, '_blank');
         }
 
@@ -888,15 +890,19 @@
             const greeting = contact ? `Oi ${contact}!` : 'Oi!';
 
             const templates = {
-                first: `${greeting} Vi que o ${business} tem ótimas avaliações no Google, mas notei que a maioria não tem resposta. Sabia que 89% das pessoas leem as respostas antes de decidir visitar?${detail ? '\n\n' + detail : ''}\n\nCriei uma demonstração gratuita de como as respostas do ${business} ficariam com inteligência artificial. Posso mandar?`,
+                first: `${greeting} Vi que o ${business} tem ótimas avaliações no Google, mas notei que a maioria não tem resposta. Sabia que 89% das pessoas leem as respostas antes de decidir visitar?${detail ? '\n\n' + detail : ''}\n\nTrabalho com IA aplicada à reputação online. Consigo responder TODAS as avaliações do ${business} de uma vez, com respostas personalizadas no tom de vocês. Posso te mostrar como ficaria?`,
 
-                demo: `${greeting} Preparei a demonstração com os dados reais do ${business}. Olha como ficou!\n\n[ENVIAR PRINT DO DEMO AQUI]\n\nIsso é tudo automático. Você só aprova e publica. Quer testar 7 dias grátis?`,
+                demo: `${greeting} Preparei uma demonstração com os dados reais do ${business}. Olha como ficou!\n\n[ENVIAR PRINT DO DEMO AQUI]\n\nIsso é tudo feito por IA e personalizado para o tom de vocês. Quer saber como funciona?`,
 
-                followup: `${greeting} Passei para saber se conseguiu ver a demonstração que mandei do RespondeAI para o ${business}. As vagas do programa piloto com 7 dias grátis estão quase esgotando.\n\nSe quiser, configuro em 5 minutos para vocês testarem sem compromisso!`,
+                bulk: `${greeting} Consigo resolver todas as avaliações sem resposta do ${business} de uma vez. O pacote começa em R$297 para até 50 reviews. Vocês recebem todas as respostas prontas, revisam e publicam.\n\nE ainda posso incluir um relatório de análise mostrando os pontos fortes e de melhoria que os clientes mais citam. Quer que eu monte uma proposta?`,
 
-                price: `${greeting} O plano do RespondeAI começa em R$197/mês para até 30 avaliações respondidas. Mas estou com 5 vagas no programa piloto com 7 dias grátis para testar sem compromisso. Se não gostar, cancela sem custo nenhum.\n\nQuer que eu configure para o ${business}?`,
+                report: `${greeting} Fiz uma análise rápida das avaliações do ${business} e identifiquei alguns padrões interessantes nos feedbacks dos clientes.\n\nMonto relatórios completos de reputação que incluem: temas mais citados, pontos fortes, reclamações recorrentes e comparação com concorrentes da região. É ouro para a gestão.\n\nO relatório sai por R$197 avulso, ou R$97 junto com o pacote de respostas. Quer saber mais?`,
 
-                closing: `${greeting} Só confirmando: configuro o RespondeAI para o ${business} agora? Em 5 minutos vocês já vão ter as primeiras respostas prontas para aprovar.\n\nOs 7 dias grátis começam a contar só depois da configuração.`
+                followup: `${greeting} Passei para saber se conseguiu ver a demonstração que mandei do RespondeAI para o ${business}. Estou com a agenda cheia esse mês, mas consigo encaixar vocês ainda essa semana se tiver interesse!\n\nQuer que eu monte uma proposta?`,
+
+                price: `${greeting} Funciona assim:\n\n- Pacote único (resolver o acumulado): a partir de R$297 para até 50 reviews\n- Plano mensal (manter em dia): a partir de R$197/mês\n- Relatório de reputação: R$197 avulso ou R$97 com pacote\n\nO mais procurado é o Pacote Completo de R$497, que cobre até 150 reviews e já inclui o relatório. Quer que eu monte a proposta para o ${business}?`,
+
+                closing: `${greeting} Só confirmando: monto a proposta para o ${business} agora? Consigo entregar as respostas em 48-72h e vocês já começam a ver resultado no Google.`
             };
 
             const msg = templates[template] || templates.first;

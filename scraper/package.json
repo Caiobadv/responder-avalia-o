@@ -1,0 +1,16 @@
+{
+  "name": "respondeai-scraper",
+  "version": "1.0.0",
+  "description": "Scraper de prospecção - encontra negócios que não respondem avaliações no Google",
+  "main": "scraper.js",
+  "scripts": {
+    "scrape": "node scraper.js",
+    "enrich": "node enrich.js",
+    "send": "node sender.js",
+    "full": "node scraper.js && node enrich.js && node sender.js"
+  },
+  "dependencies": {
+    "nodemailer": "^6.10.1",
+    "playwright": "^1.49.0"
+  }
+}

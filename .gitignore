@@ -1,0 +1,4 @@
+node_modules/
+scraper/config.js
+scraper/.whatsapp-session/
+scraper/output/
